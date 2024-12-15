@@ -16,7 +16,7 @@ interface OllamaRequestBody {
     context?: number[];
 }
 
-const VERCEL_TIMEOUT = 10000; // 10 seconds timeout for Vercel
+const VERCEL_TIMEOUT = 600000; // 10 seconds timeout for Vercel
 const CHUNK_TIMEOUT = 1000; // 1 second timeout between chunks
 
 export async function POST(req: Request) {

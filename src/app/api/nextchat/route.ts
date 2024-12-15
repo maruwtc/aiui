@@ -56,7 +56,7 @@ export async function POST(req: Request) {
                     // Validate JSON before writing
                     JSON.parse(line);  // This will throw if invalid
                     await writer.write(new TextEncoder().encode(line + '\n'));
-                } catch (jsonError) {
+                } catch {
                     console.warn('Invalid JSON chunk received:', line);
                     // If this is part of a larger JSON object, accumulate it
                     if (buffer) {
@@ -66,8 +66,8 @@ export async function POST(req: Request) {
             }
         });
 
-        response.data.on('error', async (error: Error) => {
-            console.error('Stream error:', error);
+        response.data.on('error', async () => {
+            console.error('Stream error occurred');
             try {
                 // Send an error message that the client can handle
                 const errorMessage = JSON.stringify({
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
                 try {
                     JSON.parse(buffer);  // Validate remaining JSON
                     await writer.write(new TextEncoder().encode(buffer + '\n'));
-                } catch (error) {
+                } catch {
                     console.warn('Invalid JSON in final buffer:', buffer);
                 }
             }

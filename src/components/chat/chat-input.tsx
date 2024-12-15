@@ -103,9 +103,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     };
 
     return (
-        <div className="flex-none border-t border-gray-200 dark:border-gray-700">
+        <div className="flex-none">
             <div className="container mx-auto max-w-4xl">
-                <form onSubmit={handleSubmit} className="p-4 flex items-end space-x-2">
+                <form onSubmit={handleSubmit} className="p-4 flex items-center space-x-4">
                     <div className="flex-1 relative">
                         <textarea
                             ref={textareaRef}
@@ -118,13 +118,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                                 }
                             }}
                             placeholder="Type your message..."
-                            className="w-full p-3 rounded-2xl border border-gray-200 dark:border-gray-600 
+                            className="w-full p-3 rounded-md border border-gray-200 dark:border-gray-600 
                        focus:outline-none focus:ring-2 focus:ring-blue-500 
-                       bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 
+                       bg-transparent text-gray-900 dark:text-gray-100 
                        placeholder-gray-400 dark:placeholder-gray-500
                        resize-none min-h-[44px] max-h-[200px]
                        font-geist-sans pr-12"
-                            rows={1}
+                            rows={2}
                         />
                         {isMobile && inputMessage.trim() && (
                             <button

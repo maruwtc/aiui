@@ -130,7 +130,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="absolute right-2 bottom-2 p-2 rounded-full bg-blue-500 text-white 
+                                className="absolute right-2 bottom-2 p-2 rounded-full bg-blue-900 text-white 
                          hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed
                          focus:outline-none focus:ring-2 focus:ring-blue-500
                          transition-colors duration-200"
@@ -143,11 +143,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                         <button
                             type="submit"
                             disabled={!inputMessage.trim() || isLoading}
-                            className="p-3 rounded-full bg-blue-500 text-white hover:bg-blue-600 h-[44px]
+                            className="p-3 rounded-full bg-blue-900 text-white hover:bg-blue-600 h-[44px]
                        disabled:opacity-50 disabled:cursor-not-allowed
                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                        transition-colors duration-200
-                       dark:bg-blue-600 dark:hover:bg-blue-700"
+                       dark:bg-blue-600 dark:hover:bg-blue-900"
                         >
                             <Send className="w-5 h-5" />
                         </button>

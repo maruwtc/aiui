@@ -15,8 +15,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLast })
         )}
         <div
             className={`group relative max-w-[80%] px-4 py-2 rounded-2xl ${message.role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+                ? 'bg-blue-900 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
                 } ${isLast ? 'animate-slideIn' : ''}`}
         >
             <ReactMarkdown
@@ -48,8 +48,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLast })
                         if (inline) {
                             return (
                                 <code className={`px-1 py-0.5 rounded font-mono text-sm ${message.role === 'user'
-                                        ? 'bg-blue-400 text-white'
-                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                    ? 'bg-blue-400 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                                     }`}>
                                     {children}
                                 </code>
@@ -63,8 +63,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLast })
                     },
                     pre: ({ children }) => (
                         <pre className={`p-3 rounded-lg mb-2 overflow-x-auto ${message.role === 'user'
-                                ? 'bg-blue-400'
-                                : 'bg-gray-200 dark:bg-gray-700'
+                            ? 'bg-blue-400'
+                            : 'bg-gray-200 dark:bg-gray-700'
                             }`}>
                             {children}
                         </pre>
@@ -80,8 +80,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLast })
                     ),
                     thead: ({ children }) => (
                         <thead className={`${message.role === 'user'
-                                ? 'bg-blue-400/30'
-                                : 'bg-gray-100 dark:bg-gray-800'
+                            ? 'bg-blue-400/30'
+                            : 'bg-gray-100 dark:bg-gray-800'
                             }`}>
                             {children}
                         </thead>
@@ -110,8 +110,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLast })
                     // Other elements
                     blockquote: ({ children }) => (
                         <blockquote className={`border-l-4 pl-4 my-2 ${message.role === 'user'
-                                ? 'border-blue-400 bg-blue-400/20'
-                                : 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/50'
+                            ? 'border-blue-400 bg-blue-400/20'
+                            : 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/50'
                             }`}>
                             {children}
                         </blockquote>
@@ -122,8 +122,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLast })
                             target="_blank"
                             rel="noopener noreferrer"
                             className={`underline ${message.role === 'user'
-                                    ? 'text-white hover:text-blue-100'
-                                    : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
+                                ? 'text-white hover:text-blue-100'
+                                : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
                                 }`}
                         >
                             {children}

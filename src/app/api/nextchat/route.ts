@@ -12,8 +12,12 @@ interface RequestBody {
 interface OllamaRequestBody {
     model: string;
     messages: RequestBody['messages'];
-    stream: boolean;
+    stream: true;
+    context?: number[];
 }
+
+const VERCEL_TIMEOUT = 10000; // 10 seconds timeout for Vercel
+const CHUNK_TIMEOUT = 1000; // 1 second timeout between chunks
 
 export async function POST(req: Request) {
     try {
@@ -28,7 +32,7 @@ export async function POST(req: Request) {
 
         const response = await axios.post(config.ollama_server_url, requestBody, {
             responseType: 'stream',
-            timeout: 30000,
+            timeout: VERCEL_TIMEOUT,
             headers: {
                 'Content-Type': 'application/json',
             }
@@ -37,60 +41,108 @@ export async function POST(req: Request) {
         const stream = new TransformStream();
         const writer = stream.writable.getWriter();
         let buffer = '';
+        let lastChunkTime = Date.now();
+        let isClosed = false;
+
+        // Set up a keepalive interval
+        const keepaliveInterval = setInterval(async () => {
+            if (!isClosed && Date.now() - lastChunkTime > CHUNK_TIMEOUT) {
+                try {
+                    // Send a keepalive message
+                    await writer.write(new TextEncoder().encode('\n'));
+                    lastChunkTime = Date.now();
+                } catch (error) {
+                    console.warn('Error sending keepalive:', error);
+                }
+            }
+        }, CHUNK_TIMEOUT);
+
+        // Set up a timeout to close the connection if no data is received
+        const timeoutId = setTimeout(async () => {
+            if (!isClosed) {
+                console.warn('Request timeout reached');
+                try {
+                    await writer.write(new TextEncoder().encode(
+                        JSON.stringify({
+                            error: true,
+                            message: 'Request timeout reached'
+                        }) + '\n'
+                    ));
+                    clearInterval(keepaliveInterval);
+                    await writer.close();
+                    isClosed = true;
+                } catch (error) {
+                    console.error('Error closing writer on timeout:', error);
+                }
+            }
+        }, VERCEL_TIMEOUT);
 
         response.data.on('data', async (chunk: Buffer) => {
-            // Add the new chunk to our buffer
-            buffer += chunk.toString();
+            try {
+                lastChunkTime = Date.now();
+                buffer += chunk.toString();
 
-            // Process complete JSON objects from the buffer
-            while (true) {
-                const newlineIndex = buffer.indexOf('\n');
-                if (newlineIndex === -1) break;  // No complete line found
+                while (true) {
+                    const newlineIndex = buffer.indexOf('\n');
+                    if (newlineIndex === -1) break;
 
-                const line = buffer.slice(0, newlineIndex);
-                buffer = buffer.slice(newlineIndex + 1);
+                    const line = buffer.slice(0, newlineIndex);
+                    buffer = buffer.slice(newlineIndex + 1);
 
-                if (!line.trim()) continue;  // Skip empty lines
+                    if (!line.trim()) continue;
 
-                try {
-                    // Validate JSON before writing
-                    JSON.parse(line);  // This will throw if invalid
-                    await writer.write(new TextEncoder().encode(line + '\n'));
-                } catch {
-                    console.warn('Invalid JSON chunk received:', line);
-                    // If this is part of a larger JSON object, accumulate it
-                    if (buffer) {
-                        buffer = line + '\n' + buffer;
+                    try {
+                        // Validate JSON before writing
+                        JSON.parse(line);
+                        await writer.write(new TextEncoder().encode(line + '\n'));
+                    } catch {
+                        if (buffer) {
+                            buffer = line + '\n' + buffer;
+                        }
                     }
                 }
+            } catch (error) {
+                console.error('Error processing chunk:', error);
             }
         });
 
         response.data.on('error', async () => {
-            console.error('Stream error occurred');
-            try {
-                // Send an error message that the client can handle
-                const errorMessage = JSON.stringify({
-                    error: true,
-                    message: 'Stream error occurred'
-                });
-                await writer.write(new TextEncoder().encode(errorMessage + '\n'));
-            } finally {
-                await writer.close();
+            if (!isClosed) {
+                console.error('Stream error occurred');
+                try {
+                    await writer.write(new TextEncoder().encode(
+                        JSON.stringify({
+                            error: true,
+                            message: 'Stream error occurred'
+                        }) + '\n'
+                    ));
+                } finally {
+                    clearTimeout(timeoutId);
+                    clearInterval(keepaliveInterval);
+                    await writer.close();
+                    isClosed = true;
+                }
             }
         });
 
         response.data.on('end', async () => {
-            // Process any remaining buffer content
-            if (buffer.trim()) {
+            if (!isClosed) {
                 try {
-                    JSON.parse(buffer);  // Validate remaining JSON
-                    await writer.write(new TextEncoder().encode(buffer + '\n'));
-                } catch {
-                    console.warn('Invalid JSON in final buffer:', buffer);
+                    if (buffer.trim()) {
+                        try {
+                            JSON.parse(buffer);
+                            await writer.write(new TextEncoder().encode(buffer + '\n'));
+                        } catch {
+                            console.warn('Invalid JSON in final buffer:', buffer);
+                        }
+                    }
+                } finally {
+                    clearTimeout(timeoutId);
+                    clearInterval(keepaliveInterval);
+                    await writer.close();
+                    isClosed = true;
                 }
             }
-            await writer.close();
         });
 
         return new NextResponse(stream.readable, {

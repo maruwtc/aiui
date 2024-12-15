@@ -36,22 +36,60 @@ export async function POST(req: Request) {
 
         const stream = new TransformStream();
         const writer = stream.writable.getWriter();
+        let buffer = '';
 
         response.data.on('data', async (chunk: Buffer) => {
-            const lines = chunk.toString().split('\n').filter(line => line.trim());
-            for (const line of lines) {
+            // Add the new chunk to our buffer
+            buffer += chunk.toString();
+
+            // Process complete JSON objects from the buffer
+            while (true) {
+                const newlineIndex = buffer.indexOf('\n');
+                if (newlineIndex === -1) break;  // No complete line found
+
+                const line = buffer.slice(0, newlineIndex);
+                buffer = buffer.slice(newlineIndex + 1);
+
+                if (!line.trim()) continue;  // Skip empty lines
+
                 try {
-                    if (line) {
-                        await writer.write(new TextEncoder().encode(line + '\n'));
+                    // Validate JSON before writing
+                    JSON.parse(line);  // This will throw if invalid
+                    await writer.write(new TextEncoder().encode(line + '\n'));
+                } catch (jsonError) {
+                    console.warn('Invalid JSON chunk received:', line);
+                    // If this is part of a larger JSON object, accumulate it
+                    if (buffer) {
+                        buffer = line + '\n' + buffer;
                     }
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                    console.error('Error processing line:', errorMessage);
                 }
             }
         });
 
+        response.data.on('error', async (error: Error) => {
+            console.error('Stream error:', error);
+            try {
+                // Send an error message that the client can handle
+                const errorMessage = JSON.stringify({
+                    error: true,
+                    message: 'Stream error occurred'
+                });
+                await writer.write(new TextEncoder().encode(errorMessage + '\n'));
+            } finally {
+                await writer.close();
+            }
+        });
+
         response.data.on('end', async () => {
+            // Process any remaining buffer content
+            if (buffer.trim()) {
+                try {
+                    JSON.parse(buffer);  // Validate remaining JSON
+                    await writer.write(new TextEncoder().encode(buffer + '\n'));
+                } catch (error) {
+                    console.warn('Invalid JSON in final buffer:', buffer);
+                }
+            }
             await writer.close();
         });
 
@@ -63,7 +101,6 @@ export async function POST(req: Request) {
             },
         });
     } catch (error: unknown) {
-        // Type guard to handle AxiosError specifically
         if (axios.isAxiosError(error)) {
             const axiosError = error as AxiosError;
             console.error('Detailed API error:', {
@@ -76,13 +113,13 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 {
                     error: 'API Request Failed',
-                    details: axiosError.message
+                    details: axiosError.message,
+                    status: axiosError.response?.status || 500
                 },
                 { status: axiosError.response?.status || 500 }
             );
         }
 
-        // Handle non-Axios errors
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         console.error('Non-Axios error:', errorMessage);
 

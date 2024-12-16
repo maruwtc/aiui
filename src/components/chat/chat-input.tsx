@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, ArrowUp } from 'lucide-react';
 import config from "@/config";
-import { ChatInputProps } from './types';
+import { ChatInputProps, StreamResponse } from './types';
 
 export const ChatInput: React.FC<ChatInputProps> = ({
     messages,
@@ -36,7 +36,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         e.preventDefault();
         if (!inputMessage.trim()) return;
 
-        const newMessage = { role: 'user' as const, content: inputMessage.trim() };
+        const newMessage = {
+            role: 'user' as const,
+            content: inputMessage.trim(),
+            timestamp: new Date()
+        };
         setMessages(prev => [...prev, newMessage]);
         setInputMessage('');
         setIsLoading(true);
@@ -65,8 +69,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let assistantMessage = '';
+            let evalDuration: number | undefined;
 
-            setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: '',
+                timestamp: new Date()
+            }]);
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -77,12 +86,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
                 for (const line of lines) {
                     try {
-                        const data = JSON.parse(line);
+                        const data = JSON.parse(line) as StreamResponse;
+
+                        if (data.done && data.eval_duration) {
+                            evalDuration = data.eval_duration;
+                        }
+
                         if (data.message?.content) {
                             assistantMessage += data.message.content;
                             setMessages(prev => {
                                 const newMessages = [...prev];
-                                newMessages[newMessages.length - 1].content = assistantMessage;
+                                newMessages[newMessages.length - 1] = {
+                                    role: 'assistant',
+                                    content: assistantMessage,
+                                    timestamp: new Date(),
+                                    evalDuration: evalDuration
+                                };
                                 return newMessages;
                             });
                         }
@@ -95,7 +114,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             console.error('Error:', error);
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: 'Sorry, I encountered an error while processing your request.'
+                content: 'Sorry, I encountered an error while processing your request.',
+                timestamp: new Date()
             }]);
         } finally {
             setIsLoading(false);
